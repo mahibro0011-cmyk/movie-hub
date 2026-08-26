@@ -1,39 +1,50 @@
-let ADMIN_SECRET = sessionStorage.getItem('admin_secret') || '';
+const tg = window.Telegram?.WebApp;
+tg?.ready();
+tg?.expand();
+
+const initData = tg?.initData || '';
 
 async function adminApi(path, { method = 'GET', body } = {}) {
-  const opts = {
-    method,
-    headers: { 'Content-Type': 'application/json', 'X-Admin-Secret': ADMIN_SECRET }
-  };
-  if (body) opts.body = JSON.stringify(body);
-  const res = await fetch(path, opts);
+  let url = path;
+  const opts = { method, headers: { 'Content-Type': 'application/json' } };
+
+  if (method === 'GET' || method === 'DELETE') {
+    const sep = path.includes('?') ? '&' : '?';
+    url += `${sep}initData=${encodeURIComponent(initData)}`;
+  } else {
+    opts.body = JSON.stringify({ ...body, initData });
+  }
+
+  const res = await fetch(url, opts);
   return { status: res.status, data: await res.json() };
 }
 
-// ---------------- Login ----------------
-function showApp() {
-  document.getElementById('login-screen').style.display = 'none';
-  document.getElementById('admin-app').style.display = 'block';
-  loadOverview();
+// ---------------- Access check (Telegram-account based, no password) ----------------
+async function checkAccess() {
+  if (!initData) {
+    // Not opened inside Telegram at all (e.g. plain browser tab) -> deny.
+    document.getElementById('loading-screen').style.display = 'none';
+    document.getElementById('denied-screen').style.display = 'block';
+    return;
+  }
+
+  const { status, data } = await adminApi('/api/admin/stats?view=overview');
+  document.getElementById('loading-screen').style.display = 'none';
+
+  if (status === 200 && data.ok) {
+    document.getElementById('admin-app').style.display = 'block';
+    const user = tg.initDataUnsafe?.user;
+    if (user) {
+      document.getElementById('admin-name-badge').textContent =
+        `${user.first_name || ''}${user.username ? ' (@' + user.username + ')' : ''}`;
+    }
+    loadOverview();
+  } else {
+    document.getElementById('denied-screen').style.display = 'block';
+  }
 }
 
-document.getElementById('login-btn').addEventListener('click', async () => {
-  ADMIN_SECRET = document.getElementById('admin-secret-input').value.trim();
-  const { status, data } = await adminApi('/api/admin/stats?view=overview');
-  if (status === 200 && data.ok) {
-    sessionStorage.setItem('admin_secret', ADMIN_SECRET);
-    showApp();
-  } else {
-    document.getElementById('login-msg').textContent = 'ভুল secret key।';
-  }
-});
-
-document.getElementById('logout-btn').addEventListener('click', () => {
-  sessionStorage.removeItem('admin_secret');
-  location.reload();
-});
-
-if (ADMIN_SECRET) showApp();
+checkAccess();
 
 // ---------------- Tabs ----------------
 document.querySelectorAll('.admin-tab-btn').forEach(btn => {
