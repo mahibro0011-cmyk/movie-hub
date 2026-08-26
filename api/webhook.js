@@ -1,5 +1,5 @@
 const { getDb } = require('../lib/db');
-const { sendMessage, copyMessageToChannel } = require('../lib/telegram');
+const { sendMessage } = require('../lib/telegram');
 
 const ADMIN_ID = String(process.env.ADMIN_TELEGRAM_ID);
 
@@ -69,31 +69,24 @@ module.exports = async (req, res) => {
       return res.status(200).json({ ok: true });
     }
 
-    // --- Admin uploads a video directly to the bot -> auto-generate a code ---
+    // --- Admin sends a video directly to the bot (private DM) -> auto-generate a code ---
+    // NOTE: No channel is used anywhere. The video stays only in this private DM
+    // between the admin and the bot. We just remember *where* it is (chatId + message_id)
+    // so it can be copied straight from here whenever a user unlocks it later.
     if (fromId === ADMIN_ID && (message.video || message.document)) {
-      const storageChannelId = process.env.STORAGE_CHANNEL_ID;
-
-      // Copy the video into the private storage channel (keeps a permanent copy there)
-      const copied = await copyMessageToChannel(storageChannelId, chatId, message.message_id);
-      if (!copied.ok) {
-        await sendMessage(chatId, `Failed to store video: ${copied.description || 'unknown error'}`);
-        return res.status(200).json({ ok: true });
-      }
-
-      const channelMessageId = copied.result.message_id;
       const code = generateCode();
 
       await db.collection('pendingUploads').insertOne({
         code,
-        channelMessageId,
-        storageChannelId,
+        sourceChatId: chatId,       // the admin's own DM chat with the bot
+        sourceMessageId: message.message_id,
         used: false,
         createdAt: new Date()
       });
 
       await sendMessage(
         chatId,
-        `Video saved.\n\nCode: <b>${code}</b>\n\nPaste this code into the admin panel along with the title and thumbnail to publish it.`
+        `Video saved.\n\nCode: <b>${code}</b>\n\nPaste this code into the admin panel along with the title and thumbnail to publish it.\n\n(This video is not posted anywhere else — it stays only in this chat.)`
       );
       return res.status(200).json({ ok: true });
     }
