@@ -21,8 +21,8 @@ module.exports = async (req, res) => {
       const result = await db.collection('videos').insertOne({
         title,
         thumbnail,
-        channelMessageId: pending.channelMessageId,
-        storageChannelId: pending.storageChannelId,
+        sourceChatId: pending.sourceChatId,       // admin's own DM chat with the bot
+        sourceMessageId: pending.sourceMessageId,  // no channel involved anywhere
         unlockCount: 0,
         createdAt: new Date()
       });
