@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Admin Panel — Drama Coin</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
 <link rel="stylesheet" href="style.css">
 <style>
   body { background: #F4F5FA; }
@@ -24,7 +25,7 @@
   .btn-sm.delete { background: #FEE2E2; color: #DC2626; }
   table { width: 100%; border-collapse: collapse; font-size: 13px; }
   th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--border); }
-  #login-screen { max-width: 340px; margin: 80px auto; text-align: center; }
+  #denied-screen { max-width: 340px; margin: 100px auto; text-align: center; }
   .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
   .stat-tile { background: #fff; border-radius: 12px; padding: 16px; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
   .stat-tile .num { font-size: 22px; font-weight: 800; color: var(--purple-1); }
@@ -36,22 +37,24 @@
 </head>
 <body>
 
-<div id="login-screen">
-  <h2 style="margin-bottom:16px;">Admin Login</h2>
-  <div class="card">
-    <div class="field">
-      <label>Admin Secret</label>
-      <input type="password" id="admin-secret-input" placeholder="ADMIN_PANEL_SECRET">
-    </div>
-    <button class="btn-primary" id="login-btn">Login</button>
-    <p class="msg error" id="login-msg"></p>
-  </div>
+<div id="denied-screen" style="display:none;">
+  <h2 style="margin-bottom:10px;">🚫 Access Denied</h2>
+  <p style="font-size:13px; color:var(--muted);">
+    Ei admin panel-ta shudhu bot-er owner-er Telegram account diye khola jai।
+    Tumi jodi owner hou, ei panel-ta ekta browser-e সরাসরি na khule,
+    Telegram bot-e giye <b>/admin</b> command pathao — bot ekta button dibe,
+    oi button diye panel-ta open koro।
+  </p>
+</div>
+
+<div id="loading-screen" style="text-align:center; margin-top:100px; color:var(--muted); font-size:13px;">
+  চেক করা হচ্ছে...
 </div>
 
 <div id="admin-app" style="display:none;">
   <div class="admin-header">
     <div class="admin-title">Drama Coin — Admin</div>
-    <button class="btn-sm delete" id="logout-btn">Logout</button>
+    <span id="admin-name-badge" style="font-size:12px; color:var(--muted);"></span>
   </div>
 
   <div class="admin-tabs">
