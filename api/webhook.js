@@ -69,6 +69,29 @@ module.exports = async (req, res) => {
       return res.status(200).json({ ok: true });
     }
 
+    // --- /admin command (owner only) -> sends a button that opens the admin
+    // panel as a Telegram Mini App. Because it's opened via a web_app button
+    // *inside Telegram*, the panel automatically gets the person's verified
+    // Telegram identity — no password needed. The backend re-checks that
+    // identity against ADMIN_TELEGRAM_ID on every admin request anyway, so
+    // even if someone else somehow got this link, they still couldn't get in.
+    if (message.text && message.text.startsWith('/admin')) {
+      if (fromId !== ADMIN_ID) {
+        // Silently ignore for everyone else - don't reveal that an admin panel exists.
+        return res.status(200).json({ ok: true });
+      }
+
+      const appUrl = process.env.APP_URL; // e.g. https://movie-hub.vercel.app
+      await sendMessage(chatId, 'Admin panel:', {
+        reply_markup: {
+          inline_keyboard: [[
+            { text: '🔧 Open Admin Panel', web_app: { url: `${appUrl}/admin` } }
+          ]]
+        }
+      });
+      return res.status(200).json({ ok: true });
+    }
+
     // --- Admin sends a video directly to the bot (private DM) -> auto-generate a code ---
     // NOTE: No channel is used anywhere. The video stays only in this private DM
     // between the admin and the bot. We just remember *where* it is (chatId + message_id)
