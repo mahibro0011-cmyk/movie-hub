@@ -62,6 +62,7 @@
     <button class="admin-tab-btn" data-panel="videos">Videos</button>
     <button class="admin-tab-btn" data-panel="tasks">Tasks</button>
     <button class="admin-tab-btn" data-panel="users">Users</button>
+    <button class="admin-tab-btn" data-panel="message">Message</button>
   </div>
 
   <!-- Overview -->
@@ -119,6 +120,22 @@
     <div class="card">
       <div class="field"><label>Search (username / name / telegram id)</label><input id="user-search" placeholder="search..."></div>
       <table id="users-table"><thead><tr><th>Name</th><th>Balance</th><th>Referrals</th><th>Ads watched</th></tr></thead><tbody></tbody></table>
+    </div>
+  </div>
+
+  <!-- Message -->
+  <div class="admin-panel" id="panel-message">
+    <div class="card">
+      <h3>Send message to a user</h3>
+      <p style="font-size:12px; color:var(--muted); margin-bottom:12px;">
+        যেকোনো user-কে সরাসরি টেক্সট, বা ছবি + টেক্সট পাঠান। নিচে একটা বাটন থাকবে যার লেখা আপনি ঠিক করবেন, কিন্তু বাটনটা ক্লিক করলে সবসময় সরাসরি bot-এর web app খুলবে।
+      </p>
+      <div class="field"><label>Target Telegram ID</label><input id="msg-target" placeholder="e.g. 123456789"></div>
+      <div class="field"><label>Message text</label><input id="msg-text" placeholder="আপনার মেসেজ লিখুন..."></div>
+      <div class="field"><label>Image URL (optional)</label><input id="msg-image" placeholder="https://... (খালি রাখলে শুধু টেক্সট যাবে)"></div>
+      <div class="field"><label>Button text</label><input id="msg-btn-text" placeholder="e.g. 🔥 এখনই দেখুন"></div>
+      <button class="btn-primary" id="msg-send-btn">Send</button>
+      <p class="msg" id="msg-status"></p>
     </div>
   </div>
 
