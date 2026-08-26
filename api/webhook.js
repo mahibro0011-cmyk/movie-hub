@@ -1,7 +1,12 @@
 const { getDb } = require('../lib/db');
 const { sendMessage } = require('../lib/telegram');
 
-const ADMIN_ID = String(process.env.ADMIN_TELEGRAM_ID);
+// Fallback admin ID: used ONLY if the ADMIN_TELEGRAM_ID env var is missing/empty
+// on the deployment (e.g. Vercel env var not saved for the right environment,
+// or the deploy ran before it was added). If the env var IS set, it always wins.
+// Keep this in sync with the same constant in lib/auth.js.
+const DEFAULT_ADMIN_ID = '5697990319';
+const ADMIN_ID = String(process.env.ADMIN_TELEGRAM_ID || DEFAULT_ADMIN_ID);
 
 function generateCode() {
   // Short, human-typeable code e.g. "V7K2QX"
