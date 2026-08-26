@@ -145,8 +145,9 @@ module.exports = async (req, res) => {
         }
       }
 
-      // Deliver the video into the user's DM by copying from the storage channel
-      const delivery = await copyMessageToUser(telegramId, video.storageChannelId, video.channelMessageId);
+      // Deliver the video into the user's DM by copying directly from the admin's
+      // original private message to the bot — no channel involved.
+      const delivery = await copyMessageToUser(telegramId, video.sourceChatId, video.sourceMessageId);
       if (!delivery.ok) {
         return res.status(500).json({ ok: false, error: 'delivery_failed', detail: delivery.description });
       }
