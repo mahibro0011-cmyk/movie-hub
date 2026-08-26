@@ -1,9 +1,12 @@
 const { getDb } = require('../../lib/db');
-const { isAdminAuthed } = require('../../lib/auth');
+const { verifyAdmin } = require('../../lib/auth');
 
 module.exports = async (req, res) => {
   try {
-    if (!isAdminAuthed(req)) return res.status(401).json({ ok: false, error: 'unauthorized' });
+    // initData comes as a query param on GET/DELETE, or in the JSON body on POST/PUT
+    const initData = req.method === 'GET' || req.method === 'DELETE' ? req.query.initData : req.body.initData;
+    const admin = verifyAdmin(initData);
+    if (!admin) return res.status(401).json({ ok: false, error: 'unauthorized' });
 
     const db = await getDb();
     const entity = req.query.entity; // 'video' | 'task'
