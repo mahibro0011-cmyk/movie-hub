@@ -179,6 +179,48 @@ async function deleteTask(id) {
   loadTasksTable();
 }
 
+// ---------------- Message (send custom text / image+text with a button to one user) ----------------
+document.getElementById('msg-send-btn').addEventListener('click', async () => {
+  const targetId = document.getElementById('msg-target').value.trim();
+  const text = document.getElementById('msg-text').value.trim();
+  const imageUrl = document.getElementById('msg-image').value.trim();
+  const buttonText = document.getElementById('msg-btn-text').value.trim();
+  const msg = document.getElementById('msg-status');
+
+  if (!targetId || !text || !buttonText) {
+    msg.textContent = 'Target ID, message text আর button text — সব ঘর পূরণ করুন।';
+    msg.className = 'msg error';
+    return;
+  }
+
+  const btn = document.getElementById('msg-send-btn');
+  btn.disabled = true;
+  msg.textContent = 'পাঠানো হচ্ছে...';
+  msg.className = 'msg';
+
+  const { data } = await adminApi('/api/admin/manage?entity=message', {
+    method: 'POST',
+    body: { targetId, text, imageUrl: imageUrl || undefined, buttonText }
+  });
+
+  btn.disabled = false;
+
+  if (data.ok) {
+    msg.textContent = 'Message পাঠানো হয়েছে!';
+    msg.className = 'msg ok';
+    document.getElementById('msg-target').value = '';
+    document.getElementById('msg-text').value = '';
+    document.getElementById('msg-image').value = '';
+    document.getElementById('msg-btn-text').value = '';
+  } else if (data.error === 'user_not_found') {
+    msg.textContent = 'এই Telegram ID-র কোনো user পাওয়া যায়নি (আগে bot-এ /start করতে হবে)।';
+    msg.className = 'msg error';
+  } else {
+    msg.textContent = 'পাঠাতে ব্যর্থ হয়েছে — হয়তো user bot-কে ব্লক করে রেখেছে, অথবা image URL ভুল।';
+    msg.className = 'msg error';
+  }
+});
+
 // ---------------- Users ----------------
 let userSearchDebounce;
 document.getElementById('user-search').addEventListener('input', (e) => {
