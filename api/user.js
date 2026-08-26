@@ -1,5 +1,5 @@
 const { getDb } = require('../lib/db');
-const { verifyInitData, isAdminAuthed } = require('../lib/auth');
+const { verifyInitData } = require('../lib/auth');
 const { copyMessageToUser } = require('../lib/telegram');
 
 const ADS_PER_POINT = parseInt(process.env.ADS_PER_POINT || '2', 10);
