@@ -2,8 +2,7 @@ const { getDb } = require('../lib/db');
 const { verifyInitData } = require('../lib/auth');
 const { copyMessageToUser } = require('../lib/telegram');
 
-const ADS_PER_POINT = parseInt(process.env.ADS_PER_POINT || '2', 10);
-const POINTS_PER_AD_BATCH = parseFloat(process.env.POINTS_PER_AD_BATCH || '0.5');
+const POINTS_PER_AD = parseFloat(process.env.POINTS_PER_AD_BATCH || '0.5');
 const UNLOCK_COST = parseFloat(process.env.UNLOCK_COST || '1');
 const AD_COOLDOWN_SECONDS = parseInt(process.env.AD_COOLDOWN_SECONDS || '20', 10);
 const DAILY_AD_LIMIT = parseInt(process.env.DAILY_AD_LIMIT || '20', 10);
@@ -86,10 +85,9 @@ module.exports = async (req, res) => {
       adViewsToday += 1;
       const totalAdsWatched = (user.totalAdsWatched || 0) + 1;
 
-      let pointsEarned = 0;
-      if (totalAdsWatched % ADS_PER_POINT === 0) {
-        pointsEarned = POINTS_PER_AD_BATCH;
-      }
+      // Every single ad rewards points now (no batching - previously only every
+      // Nth ad paid out via ADS_PER_POINT).
+      const pointsEarned = POINTS_PER_AD;
 
       await users.updateOne(
         { telegramId },
