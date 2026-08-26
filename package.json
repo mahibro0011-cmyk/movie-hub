@@ -1,0 +1,13 @@
+{
+  "name": "drama-coin-bot",
+  "version": "1.0.0",
+  "description": "Telegram Mini App - DHC coin reward system for video content",
+  "main": "index.js",
+  "scripts": {
+    "dev": "vercel dev"
+  },
+  "dependencies": {
+    "mongodb": "^6.8.0",
+    "node-fetch": "^2.7.0"
+  }
+}

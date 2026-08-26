@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Drama Coin</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div id="app">
+
+  <!-- ================= WATCH TAB ================= -->
+  <section class="tab-panel active" id="tab-watch">
+    <header class="topbar">
+      <div class="brand"><span>Drama</span><b>Box</b></div>
+      <div class="user-chip" id="watch-user-chip">
+        <span id="watch-username">...</span>
+        <img id="watch-avatar" class="avatar-sm" src="" alt="">
+      </div>
+    </header>
+
+    <div class="search-pill">
+      <input type="text" placeholder="মুভির নাম দিয়ে সার্চ করুন..." disabled>
+    </div>
+
+    <div id="video-grid" class="video-grid">
+      <div class="empty-state">লোড হচ্ছে...</div>
+    </div>
+  </section>
+
+  <!-- ================= VIDEO DETAIL (overlay) ================= -->
+  <section class="tab-panel overlay-panel" id="panel-video-detail">
+    <header class="topbar">
+      <button class="back-btn" data-back="watch">←</button>
+      <div class="brand-sm">Video Details</div>
+    </header>
+    <div class="detail-card">
+      <img id="detail-thumb" class="detail-thumb" src="" alt="">
+      <h2 id="detail-title">—</h2>
+      <p class="unlock-label">🔓 Unlock the Video</p>
+      <p class="unlock-req">ভিডিওটি আনলক করতে <b id="detail-cost">1</b> DHC Coin প্রয়োজন।</p>
+      <p class="insufficient-msg" id="insufficient-msg" style="display:none;">
+        আপনার ব্যালেন্স যথেষ্ট নয়। <a data-goto="earn">Collect DHC Coin</a>
+      </p>
+      <button class="btn-primary" id="unlock-btn">Unlock করুন</button>
+      <p class="detail-status" id="detail-status"></p>
+    </div>
+  </section>
+
+  <!-- ================= EARN TAB ================= -->
+  <section class="tab-panel" id="tab-earn">
+    <header class="topbar"><div class="brand-sm">Earn</div></header>
+
+    <div class="earn-hero">
+      <p class="earn-hero-title">Watch short ads to earn DHC Coin instantly</p>
+    </div>
+
+    <div class="pill-row">
+      <div class="pill">⏱ <span id="ad-wait-label">20 Sec Wait</span></div>
+      <div class="pill">⚡ <span id="ad-limit-label">20 Daily</span></div>
+    </div>
+
+    <div class="progress-card">
+      <div class="progress-row">
+        <span>Daily Progress</span>
+        <span id="progress-count">0 / 20</span>
+      </div>
+      <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
+    </div>
+
+    <div class="stat-two-col">
+      <div class="stat-box">
+        <span class="stat-label">Daily Limit</span>
+        <span class="stat-value" id="daily-limit-value">20</span>
+      </div>
+      <div class="stat-box">
+        <span class="stat-label">Completed</span>
+        <span class="stat-value" id="completed-value">0</span>
+      </div>
+    </div>
+
+    <button class="btn-primary btn-watch-ad" id="watch-ad-btn">🎬 Watch Ad &amp; Earn</button>
+    <p class="ad-status" id="ad-status"></p>
+
+    <div class="overview-card">
+      <p class="overview-title">Earning Overview</p>
+      <div class="overview-row">
+        <span>🪙 Total DHC Earned</span>
+        <b id="overview-balance">0</b>
+      </div>
+      <div class="overview-row">
+        <span>👁 Total Ads Viewed</span>
+        <b id="overview-ads">0</b>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= TASK TAB ================= -->
+  <section class="tab-panel" id="tab-task">
+    <header class="topbar"><div class="brand-sm">Available Tasks</div></header>
+    <div id="task-list" class="task-list">
+      <div class="empty-state">লোড হচ্ছে...</div>
+    </div>
+  </section>
+
+  <!-- ================= REFER TAB ================= -->
+  <section class="tab-panel" id="tab-refer">
+    <header class="topbar"><div class="brand-sm">Refer &amp; Earn</div></header>
+
+    <div class="stat-two-col">
+      <div class="stat-box">
+        <span class="stat-label">Total Referrals</span>
+        <span class="stat-value" id="refer-count">0</span>
+      </div>
+      <div class="stat-box">
+        <span class="stat-label">Bonus Rate</span>
+        <span class="stat-value" id="refer-rate">10%</span>
+      </div>
+    </div>
+
+    <div class="refer-link-card">
+      <p class="overview-title">Your Referral Link</p>
+      <div class="refer-link-row">
+        <input type="text" id="refer-link-input" readonly>
+        <button class="btn-copy" id="refer-copy-btn">Copy</button>
+      </div>
+      <button class="btn-primary" id="refer-share-btn">Share on Telegram</button>
+    </div>
+
+    <div class="how-it-works">
+      <p class="overview-title">How it works?</p>
+      <div class="how-step"><span class="step-num">1</span> লিংকটি কপি করে বন্ধুদের সাথে শেয়ার করুন।</div>
+      <div class="how-step"><span class="step-num">2</span> তারা সাইন আপ করে কাজ শুরু করবে।</div>
+      <div class="how-step"><span class="step-num">3</span> আপনি <b id="how-bonus-pct">10%</b> কমিশন পাবেন যখন তারা ভিডিও আনলক করবে!</div>
+    </div>
+  </section>
+
+  <!-- ================= PROFILE TAB ================= -->
+  <section class="tab-panel" id="tab-profile">
+    <header class="topbar"><div class="brand-sm">Profile</div></header>
+
+    <div class="profile-card">
+      <img id="profile-avatar" class="avatar-lg" src="" alt="">
+      <p class="profile-name" id="profile-name">—</p>
+      <p class="profile-handle" id="profile-handle"></p>
+
+      <div class="profile-stats-row">
+        <div class="pstat"><span id="profile-balance">0</span><label>WALLET</label></div>
+        <div class="pstat"><span id="profile-referrals">0</span><label>REFERRALS</label></div>
+        <div class="pstat"><span id="profile-unlocked">0</span><label>UNLOCKED</label></div>
+      </div>
+    </div>
+
+    <div class="profile-menu">
+      <button class="menu-row" id="unlocked-history-btn">
+        <span>🎞 Total Video Unlocked</span>
+        <b id="unlocked-count-inline">0</b>
+      </button>
+    </div>
+
+    <div id="unlocked-history-list" class="unlocked-history-list"></div>
+  </section>
+
+  <!-- ================= BOTTOM NAV ================= -->
+  <nav class="bottom-nav">
+    <button class="nav-btn active" data-tab="watch"><span class="nav-icon">🏠</span>Home</button>
+    <button class="nav-btn" data-tab="earn"><span class="nav-icon">💰</span>Earn</button>
+    <button class="nav-btn" data-tab="task"><span class="nav-icon">✅</span>Task</button>
+    <button class="nav-btn" data-tab="refer"><span class="nav-icon">🎁</span>Refer</button>
+    <button class="nav-btn" data-tab="profile"><span class="nav-icon">👤</span>Profile</button>
+  </nav>
+
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>

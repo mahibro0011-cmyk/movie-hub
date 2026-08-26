@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin Panel — Drama Coin</title>
+<link rel="stylesheet" href="style.css">
+<style>
+  body { background: #F4F5FA; }
+  #admin-app { max-width: 800px; margin: 0 auto; padding: 20px; }
+  .admin-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+  .admin-title { font-size: 22px; font-weight: 800; }
+  .admin-tabs { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+  .admin-tab-btn { padding: 10px 16px; border-radius: 10px; border: none; background: #fff; font-weight: 600; font-size: 13px; cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+  .admin-tab-btn.active { background: var(--purple-1); color: #fff; }
+  .admin-panel { display: none; }
+  .admin-panel.active { display: block; }
+  .card { background: #fff; border-radius: 14px; padding: 20px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+  .card h3 { font-size: 15px; margin-bottom: 14px; }
+  .field { margin-bottom: 12px; }
+  .field label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; font-weight: 600; }
+  .field input, .field select { width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px; }
+  .btn-sm { padding: 8px 14px; border-radius: 8px; border: none; font-size: 12px; font-weight: 700; cursor: pointer; }
+  .btn-sm.delete { background: #FEE2E2; color: #DC2626; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--border); }
+  #login-screen { max-width: 340px; margin: 80px auto; text-align: center; }
+  .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .stat-tile { background: #fff; border-radius: 12px; padding: 16px; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+  .stat-tile .num { font-size: 22px; font-weight: 800; color: var(--purple-1); }
+  .stat-tile .lbl { font-size: 11px; color: var(--muted); margin-top: 4px; }
+  .msg { font-size: 12px; margin-top: 8px; min-height: 16px; }
+  .msg.error { color: #DC2626; }
+  .msg.ok { color: #16A34A; }
+</style>
+</head>
+<body>
+
+<div id="login-screen">
+  <h2 style="margin-bottom:16px;">Admin Login</h2>
+  <div class="card">
+    <div class="field">
+      <label>Admin Secret</label>
+      <input type="password" id="admin-secret-input" placeholder="ADMIN_PANEL_SECRET">
+    </div>
+    <button class="btn-primary" id="login-btn">Login</button>
+    <p class="msg error" id="login-msg"></p>
+  </div>
+</div>
+
+<div id="admin-app" style="display:none;">
+  <div class="admin-header">
+    <div class="admin-title">Drama Coin — Admin</div>
+    <button class="btn-sm delete" id="logout-btn">Logout</button>
+  </div>
+
+  <div class="admin-tabs">
+    <button class="admin-tab-btn active" data-panel="overview">Overview</button>
+    <button class="admin-tab-btn" data-panel="videos">Videos</button>
+    <button class="admin-tab-btn" data-panel="tasks">Tasks</button>
+    <button class="admin-tab-btn" data-panel="users">Users</button>
+  </div>
+
+  <!-- Overview -->
+  <div class="admin-panel active" id="panel-overview">
+    <div class="stats-grid" id="stats-grid"></div>
+  </div>
+
+  <!-- Videos -->
+  <div class="admin-panel" id="panel-videos">
+    <div class="card">
+      <h3>Publish new video</h3>
+      <p style="font-size:12px; color:var(--muted); margin-bottom:12px;">
+        আগে ভিডিওটা bot-কে DM-এ পাঠান (admin হিসেবে) — bot একটা কোড রিপ্লাই করবে। সেই কোডটা এখানে বসান।
+      </p>
+      <div class="field"><label>Code (from bot)</label><input id="video-code" placeholder="e.g. V7K2QX"></div>
+      <div class="field"><label>Title</label><input id="video-title" placeholder="Video title"></div>
+      <div class="field"><label>Thumbnail URL</label><input id="video-thumb" placeholder="https://..."></div>
+      <button class="btn-primary" id="video-publish-btn">Publish</button>
+      <p class="msg" id="video-msg"></p>
+    </div>
+    <div class="card">
+      <h3>Published videos</h3>
+      <table id="videos-table"><thead><tr><th>Title</th><th>Unlocks</th><th></th></tr></thead><tbody></tbody></table>
+    </div>
+  </div>
+
+  <!-- Tasks -->
+  <div class="admin-panel" id="panel-tasks">
+    <div class="card">
+      <h3>Add new task</h3>
+      <div class="field"><label>Title</label><input id="task-title" placeholder="Task title"></div>
+      <div class="field"><label>Type</label>
+        <select id="task-type">
+          <option value="normal">Normal (click link + verify)</option>
+          <option value="verified">Verified (checks channel membership)</option>
+        </select>
+      </div>
+      <div class="field"><label>Link</label><input id="task-link" placeholder="https://t.me/..."></div>
+      <div class="field" id="task-channel-field" style="display:none;">
+        <label>Channel ID (for verified type, e.g. -1001234567890)</label>
+        <input id="task-channel-id" placeholder="-100...">
+      </div>
+      <div class="field"><label>Reward (DHC)</label><input id="task-reward" type="number" step="0.1" placeholder="1.0"></div>
+      <button class="btn-primary" id="task-add-btn">Add Task</button>
+      <p class="msg" id="task-msg"></p>
+    </div>
+    <div class="card">
+      <h3>Active tasks</h3>
+      <table id="tasks-table"><thead><tr><th>Title</th><th>Type</th><th>Reward</th><th></th></tr></thead><tbody></tbody></table>
+    </div>
+  </div>
+
+  <!-- Users -->
+  <div class="admin-panel" id="panel-users">
+    <div class="card">
+      <div class="field"><label>Search (username / name / telegram id)</label><input id="user-search" placeholder="search..."></div>
+      <table id="users-table"><thead><tr><th>Name</th><th>Balance</th><th>Referrals</th><th>Ads watched</th></tr></thead><tbody></tbody></table>
+    </div>
+  </div>
+
+</div>
+
+<script src="admin.js"></script>
+</body>
+</html>
