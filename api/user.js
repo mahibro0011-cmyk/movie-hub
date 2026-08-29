@@ -1,12 +1,14 @@
 const { getDb } = require('../lib/db');
 const { verifyInitData } = require('../lib/auth');
-const { copyMessageToUser } = require('../lib/telegram');
+const { copyMessageToUser, sendMessage } = require('../lib/telegram');
 
 const POINTS_PER_AD = parseFloat(process.env.POINTS_PER_AD_BATCH || '0.5');
 const UNLOCK_COST = parseFloat(process.env.UNLOCK_COST || '1');
 const AD_COOLDOWN_SECONDS = parseInt(process.env.AD_COOLDOWN_SECONDS || '20', 10);
 const DAILY_AD_LIMIT = parseInt(process.env.DAILY_AD_LIMIT || '20', 10);
 const REFERRAL_COMMISSION_PCT = parseFloat(process.env.REFERRAL_UNLOCK_COMMISSION_PCT || '10');
+const MIN_WITHDRAW = parseFloat(process.env.MIN_WITHDRAW || '500');
+const ADMIN_TELEGRAM_ID = process.env.ADMIN_TELEGRAM_ID || '5697990319';
 
 function todayStr() {
   return new Date().toISOString().slice(0, 10);
@@ -56,7 +58,8 @@ module.exports = async (req, res) => {
           referralCount: user.referralCount,
           totalAdsWatched: user.totalAdsWatched,
           adViewsToday: user.adViewsToday,
-          dailyAdLimit: DAILY_AD_LIMIT
+          dailyAdLimit: DAILY_AD_LIMIT,
+          minWithdraw: MIN_WITHDRAW
         }
       });
     }
@@ -117,30 +120,28 @@ module.exports = async (req, res) => {
       const video = await videos.findOne({ _id: new ObjectId(videoId) });
       if (!video) return res.status(404).json({ ok: false, error: 'video_not_found' });
 
-      const alreadyUnlocked = await db.collection('unlockedVideos').findOne({
-        userId: telegramId, videoId: String(videoId)
+      // Unlocking always costs UNLOCK_COST, every single time - a previous
+      // unlock of this same video does NOT make a re-watch free. Every unlock
+      // (first time or repeat) is its own paid transaction and its own row in
+      // unlockedVideos, so "Total Video Unlocked" reflects total purchases.
+      if (user.balance < UNLOCK_COST) {
+        return res.status(402).json({ ok: false, error: 'insufficient_balance', required: UNLOCK_COST, balance: user.balance });
+      }
+
+      await users.updateOne({ telegramId }, { $inc: { balance: -UNLOCK_COST } });
+
+      await db.collection('unlockedVideos').insertOne({
+        userId: telegramId,
+        videoId: String(videoId),
+        unlockedAt: new Date()
       });
 
-      if (!alreadyUnlocked) {
-        if (user.balance < UNLOCK_COST) {
-          return res.status(402).json({ ok: false, error: 'insufficient_balance', required: UNLOCK_COST, balance: user.balance });
-        }
+      await videos.updateOne({ _id: video._id }, { $inc: { unlockCount: 1 } });
 
-        await users.updateOne({ telegramId }, { $inc: { balance: -UNLOCK_COST } });
-
-        await db.collection('unlockedVideos').insertOne({
-          userId: telegramId,
-          videoId: String(videoId),
-          unlockedAt: new Date()
-        });
-
-        await videos.updateOne({ _id: video._id }, { $inc: { unlockCount: 1 } });
-
-        // Referrer commission
-        if (user.referrerId) {
-          const commission = UNLOCK_COST * (REFERRAL_COMMISSION_PCT / 100);
-          await users.updateOne({ telegramId: user.referrerId }, { $inc: { balance: commission } });
-        }
+      // Referrer commission
+      if (user.referrerId) {
+        const commission = UNLOCK_COST * (REFERRAL_COMMISSION_PCT / 100);
+        await users.updateOne({ telegramId: user.referrerId }, { $inc: { balance: commission } });
       }
 
       // Deliver the video into the user's DM by copying directly from the admin's
@@ -173,6 +174,65 @@ module.exports = async (req, res) => {
           title: videoMap[e.videoId]?.title || 'Unknown',
           thumbnail: videoMap[e.videoId]?.thumbnail || null,
           unlockedAt: e.unlockedAt
+        }))
+      });
+    }
+
+    // ---------------- WITHDRAW: submit a request ----------------
+    if (action === 'withdraw_request' && req.method === 'POST') {
+      const { amount, method, accountNumber } = req.body;
+      const amt = parseFloat(amount);
+
+      if (!amt || !['bkash', 'nagad'].includes(method) || !accountNumber || !String(accountNumber).trim()) {
+        return res.status(400).json({ ok: false, error: 'missing_fields' });
+      }
+      if (amt < MIN_WITHDRAW) {
+        return res.status(400).json({ ok: false, error: 'below_minimum', minimum: MIN_WITHDRAW });
+      }
+      if (user.balance < amt) {
+        return res.status(402).json({ ok: false, error: 'insufficient_balance', balance: user.balance });
+      }
+
+      // Hold the balance immediately so it can't be double-spent while the
+      // request is pending - admin/manage.js refunds it automatically on reject.
+      await users.updateOne({ telegramId }, { $inc: { balance: -amt } });
+
+      const result = await db.collection('withdrawals').insertOne({
+        userId: telegramId,
+        amount: amt,
+        method,
+        accountNumber: String(accountNumber).trim(),
+        status: 'pending',
+        createdAt: new Date()
+      });
+
+      // Best-effort notify the admin - a failed notify should never fail the request itself.
+      try {
+        await sendMessage(
+          ADMIN_TELEGRAM_ID,
+          `💸 Notun withdraw request!\n\nUser: ${user.firstName || ''} (${telegramId})\nAmount: ${amt} DHC\nMethod: ${method}\nAccount: ${accountNumber}\n\nAdmin panel-er Withdrawals tab theke approve/reject korun.`
+        );
+      } catch (err) {
+        console.error('withdraw admin notify failed:', err.message);
+      }
+
+      const updated = await users.findOne({ telegramId });
+      return res.status(200).json({ ok: true, withdrawalId: result.insertedId, newBalance: updated.balance });
+    }
+
+    // ---------------- WITHDRAW: this user's own history ----------------
+    if (action === 'withdraw_history') {
+      const withdrawals = await db.collection('withdrawals')
+        .find({ userId: telegramId }).sort({ createdAt: -1 }).toArray();
+
+      return res.status(200).json({
+        ok: true,
+        withdrawals: withdrawals.map(w => ({
+          id: w._id,
+          amount: w.amount,
+          method: w.method,
+          status: w.status,
+          createdAt: w.createdAt
         }))
       });
     }
