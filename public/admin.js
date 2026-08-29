@@ -54,9 +54,11 @@ document.querySelectorAll('.admin-tab-btn').forEach(btn => {
     btn.classList.add('active');
     document.getElementById(`panel-${btn.dataset.panel}`).classList.add('active');
     if (btn.dataset.panel === 'overview') loadOverview();
-    if (btn.dataset.panel === 'videos') loadVideosTable();
+    if (btn.dataset.panel === 'videos') { loadVideosTable(); loadVideoCategoryCheckboxes(); }
+    if (btn.dataset.panel === 'categories') loadCategoriesTable();
     if (btn.dataset.panel === 'tasks') loadTasksTable();
     if (btn.dataset.panel === 'users') loadUsersTable();
+    if (btn.dataset.panel === 'withdrawals') loadWithdrawalsTable();
     if (btn.dataset.panel === 'message') loadMessageVideoOptions();
   });
 });
@@ -77,22 +79,41 @@ async function loadOverview() {
 }
 
 // ---------------- Videos ----------------
+async function loadVideoCategoryCheckboxes() {
+  const box = document.getElementById('video-category-checkboxes');
+  const { data } = await adminApi('/api/admin/manage?entity=category');
+  if (!data.ok || !data.categories.length) {
+    box.innerHTML = '<span style="font-size:12px; color:var(--muted);">কোনো Section নেই — আগে Categories ট্যাব থেকে একটা বানান।</span>';
+    return;
+  }
+  box.innerHTML = data.categories.map(c => `
+    <label><input type="checkbox" class="video-cat-checkbox" value="${c._id}"> ${c.name}</label>
+  `).join('');
+}
+
 document.getElementById('video-publish-btn').addEventListener('click', async () => {
   const code = document.getElementById('video-code').value.trim();
   const title = document.getElementById('video-title').value.trim();
   const thumbnail = document.getElementById('video-thumb').value.trim();
+  const categoryIds = [...document.querySelectorAll('.video-cat-checkbox:checked')].map(cb => cb.value);
+  const includeInAll = document.getElementById('video-include-all').checked;
   const msg = document.getElementById('video-msg');
 
   if (!code || !title || !thumbnail) {
     msg.textContent = 'সব ঘর পূরণ করুন।'; msg.className = 'msg error'; return;
   }
 
-  const { data } = await adminApi('/api/admin/manage?entity=video', { method: 'POST', body: { code, title, thumbnail } });
+  const { data } = await adminApi('/api/admin/manage?entity=video', {
+    method: 'POST',
+    body: { code, title, thumbnail, categoryIds, includeInAll }
+  });
   if (data.ok) {
     msg.textContent = 'Video published!'; msg.className = 'msg ok';
     document.getElementById('video-code').value = '';
     document.getElementById('video-title').value = '';
     document.getElementById('video-thumb').value = '';
+    document.querySelectorAll('.video-cat-checkbox').forEach(cb => cb.checked = false);
+    document.getElementById('video-include-all').checked = true;
     loadVideosTable();
   } else {
     msg.textContent = data.error === 'invalid_or_used_code' ? 'কোডটি ভুল অথবা আগেই ব্যবহার হয়ে গেছে।' : 'কিছু একটা সমস্যা হয়েছে।';
@@ -178,6 +199,80 @@ async function deleteTask(id) {
   if (!confirm('Remove this task?')) return;
   await adminApi(`/api/admin/manage?entity=task&id=${id}`, { method: 'DELETE' });
   loadTasksTable();
+}
+
+// ---------------- Categories (sections like "Bangla Movies") ----------------
+document.getElementById('category-add-btn').addEventListener('click', async () => {
+  const name = document.getElementById('category-name').value.trim();
+  const msg = document.getElementById('category-msg');
+  if (!name) { msg.textContent = 'নাম দিন।'; msg.className = 'msg error'; return; }
+
+  const { data } = await adminApi('/api/admin/manage?entity=category', { method: 'POST', body: { name } });
+  if (data.ok) {
+    msg.textContent = 'Section যোগ হয়েছে!'; msg.className = 'msg ok';
+    document.getElementById('category-name').value = '';
+    loadCategoriesTable();
+  } else if (data.error === 'duplicate_name') {
+    msg.textContent = 'এই নামে একটা section আগে থেকেই আছে।'; msg.className = 'msg error';
+  } else {
+    msg.textContent = 'কিছু একটা সমস্যা হয়েছে।'; msg.className = 'msg error';
+  }
+});
+
+async function loadCategoriesTable() {
+  const { data } = await adminApi('/api/admin/manage?entity=category');
+  const tbody = document.querySelector('#categories-table tbody');
+  if (!data.ok || !data.categories.length) {
+    tbody.innerHTML = '<tr><td colspan="2">কোনো section নেই</td></tr>';
+    return;
+  }
+  tbody.innerHTML = data.categories.map(c => `
+    <tr>
+      <td>${c.name}</td>
+      <td><button class="btn-sm delete" onclick="deleteCategory('${c._id}')">Delete</button></td>
+    </tr>
+  `).join('');
+}
+
+async function deleteCategory(id) {
+  if (!confirm('এই section delete করলে সব ভিডিও থেকেও এটা বাদ যাবে। নিশ্চিত?')) return;
+  await adminApi(`/api/admin/manage?entity=category&id=${id}`, { method: 'DELETE' });
+  loadCategoriesTable();
+}
+
+// ---------------- Withdrawals ----------------
+document.getElementById('withdrawal-filter').addEventListener('change', () => loadWithdrawalsTable());
+
+async function loadWithdrawalsTable() {
+  const status = document.getElementById('withdrawal-filter').value;
+  const { data } = await adminApi(`/api/admin/manage?entity=withdrawal${status ? `&status=${status}` : ''}`);
+  const tbody = document.querySelector('#withdrawals-table tbody');
+  if (!data.ok || !data.withdrawals.length) {
+    tbody.innerHTML = '<tr><td colspan="6">কোনো request নেই</td></tr>';
+    return;
+  }
+  tbody.innerHTML = data.withdrawals.map(w => `
+    <tr>
+      <td>${w.userName}</td>
+      <td>${Number(w.amount).toFixed(2)} DHC</td>
+      <td>${w.method === 'bkash' ? 'Bkash' : 'Nagad'}</td>
+      <td>${w.accountNumber}</td>
+      <td><span class="status-pill ${w.status}">${w.status}</span></td>
+      <td>
+        ${w.status === 'pending' ? `
+          <button class="btn-sm approve" onclick="decideWithdrawal('${w.id}','approve')">Approve</button>
+          <button class="btn-sm delete" onclick="decideWithdrawal('${w.id}','reject')">Reject</button>
+        ` : ''}
+      </td>
+    </tr>
+  `).join('');
+}
+
+async function decideWithdrawal(id, action) {
+  if (!confirm(action === 'approve' ? 'এই request approve করবেন?' : 'এই request reject করবেন? (balance ফেরত যাবে)')) return;
+  const { data } = await adminApi('/api/admin/manage?entity=withdrawal', { method: 'POST', body: { id, action } });
+  if (!data.ok) { alert('কিছু একটা সমস্যা হয়েছে।'); return; }
+  loadWithdrawalsTable();
 }
 
 // ---------------- Message (send to one user, or broadcast to all) ----------------
