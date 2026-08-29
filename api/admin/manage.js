@@ -85,38 +85,80 @@ module.exports = async (req, res) => {
       return res.status(200).json({ ok: true, tasks });
     }
 
-    // ---------------- CUSTOM MESSAGE TO A SPECIFIC USER ----------------
-    // Sends text (or an image + caption) to one Telegram user, with a single
-    // button underneath. The button's label is whatever the admin typed, but
-    // its target is ALWAYS the bot's own Mini App (APP_URL) — clicking it
-    // opens the web app directly, it never points anywhere else.
+    // ---------------- CUSTOM MESSAGE TO ONE USER, OR BROADCAST TO ALL ----------------
+    // Sends text and/or an image with a single button underneath.
+    // - targetId given  -> goes to just that one user.
+    // - targetId blank  -> goes to EVERY user in the database (broadcast).
+    // - videoId given   -> button opens that video's detail page directly.
+    // - videoId blank   -> button opens the app's home page (default APP_URL).
+    // The button's label is whatever the admin typed, but it always opens the
+    // bot's own Mini App (optionally deep-linked to a video) - never anywhere else.
     if (entity === 'message' && req.method === 'POST') {
-      const { targetId, text, imageUrl, buttonText } = req.body;
-      if (!targetId || !text || !buttonText) {
+      const { targetId, text, imageUrl, buttonText, videoId } = req.body;
+
+      if (!buttonText || (!text && !imageUrl)) {
         return res.status(400).json({ ok: false, error: 'missing_fields' });
       }
 
-      const targetUser = await db.collection('users').findOne({ telegramId: String(targetId) });
-      if (!targetUser) {
-        return res.status(404).json({ ok: false, error: 'user_not_found' });
+      const appUrl = process.env.APP_URL;
+      let buttonUrl = appUrl;
+
+      if (videoId) {
+        const { ObjectId } = require('mongodb');
+        let video;
+        try {
+          video = await db.collection('videos').findOne({ _id: new ObjectId(videoId) });
+        } catch {
+          return res.status(400).json({ ok: false, error: 'invalid_video_id' });
+        }
+        if (!video) return res.status(404).json({ ok: false, error: 'video_not_found' });
+        buttonUrl = `${appUrl}?video=${videoId}`;
       }
 
-      const appUrl = process.env.APP_URL;
       const replyMarkup = {
         inline_keyboard: [[
-          { text: buttonText, web_app: { url: appUrl } }
+          { text: buttonText, web_app: { url: buttonUrl } }
         ]]
       };
 
-      const result = imageUrl
-        ? await sendPhoto(targetId, imageUrl, text, { reply_markup: replyMarkup })
-        : await sendMessage(targetId, text, { reply_markup: replyMarkup });
+      // ---- Single targeted user ----
+      if (targetId) {
+        const targetUser = await db.collection('users').findOne({ telegramId: String(targetId) });
+        if (!targetUser) {
+          return res.status(404).json({ ok: false, error: 'user_not_found' });
+        }
 
-      if (!result.ok) {
-        return res.status(500).json({ ok: false, error: 'send_failed', detail: result.description });
+        const result = imageUrl
+          ? await sendPhoto(targetId, imageUrl, text || '', { reply_markup: replyMarkup })
+          : await sendMessage(targetId, text, { reply_markup: replyMarkup });
+
+        if (!result.ok) {
+          return res.status(500).json({ ok: false, error: 'send_failed', detail: result.description });
+        }
+
+        return res.status(200).json({ ok: true, broadcast: false });
       }
 
-      return res.status(200).json({ ok: true });
+      // ---- Broadcast: no targetId given -> send to every known user ----
+      const allUsers = await db.collection('users').find({}, { projection: { telegramId: 1 } }).toArray();
+
+      // Fire all sends concurrently. Telegram will rate-limit a fraction of
+      // these on large user bases (~30 msgs/sec) - failures are counted, not
+      // fatal, so a big broadcast still finishes and reports how many landed.
+      // NOTE: this function also has a maxDuration cap (see vercel.json) - on a
+      // very large user base, re-run the broadcast if "sent" < "totalUsers".
+      const results = await Promise.allSettled(
+        allUsers.map(u =>
+          imageUrl
+            ? sendPhoto(u.telegramId, imageUrl, text || '', { reply_markup: replyMarkup })
+            : sendMessage(u.telegramId, text, { reply_markup: replyMarkup })
+        )
+      );
+
+      const sent = results.filter(r => r.status === 'fulfilled' && r.value.ok).length;
+      const failed = results.length - sent;
+
+      return res.status(200).json({ ok: true, broadcast: true, totalUsers: allUsers.length, sent, failed });
     }
 
     return res.status(400).json({ ok: false, error: 'unknown_entity_or_method' });
