@@ -44,7 +44,7 @@ function showTab(name) {
 
 document.querySelectorAll('[data-back]').forEach(btn => {
   btn.addEventListener('click', () => {
-    document.getElementById('panel-video-detail').classList.remove('active');
+    document.querySelectorAll('.overlay-panel').forEach(p => p.classList.remove('active'));
     showTab(btn.dataset.back);
   });
 });
@@ -52,17 +52,38 @@ document.querySelectorAll('[data-back]').forEach(btn => {
 document.querySelectorAll('[data-goto]').forEach(el => {
   el.addEventListener('click', (e) => {
     e.preventDefault();
-    document.getElementById('panel-video-detail').classList.remove('active');
+    document.querySelectorAll('.overlay-panel').forEach(p => p.classList.remove('active'));
     showTab(el.dataset.goto);
   });
 });
 
-// ---------------- Watch tab: video grid ----------------
+// ---------------- Watch tab: category tabs + video grid ----------------
+let currentCategory = 'all';
+
+async function loadCategoryTabs() {
+  const bar = document.getElementById('category-tabs');
+  const data = await api('/api/content?type=categories');
+  if (!data.ok) return;
+
+  // Keep the existing "All" tab, append the rest.
+  bar.innerHTML = '<button class="category-tab active" data-category="all">All</button>' +
+    data.categories.map(c => `<button class="category-tab" data-category="${c.id}">${c.name}</button>`).join('');
+
+  bar.querySelectorAll('.category-tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+      bar.querySelectorAll('.category-tab').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentCategory = btn.dataset.category;
+      loadVideos();
+    });
+  });
+}
+
 async function loadVideos() {
   const grid = document.getElementById('video-grid');
-  const data = await api('/api/content?type=videos');
+  const data = await api(`/api/content?type=videos&category=${encodeURIComponent(currentCategory)}`);
   if (!data.ok || !data.videos.length) {
-    grid.innerHTML = '<div class="empty-state">এখনো কোনো ভিডিও যোগ করা হয়নি।</div>';
+    grid.innerHTML = '<div class="empty-state">এখনো কোনো ভিডিও নেই।</div>';
     return;
   }
   grid.innerHTML = data.videos.map(v => `
@@ -156,6 +177,10 @@ async function loadProfile() {
   if (u.photoUrl) document.getElementById('profile-avatar').src = u.photoUrl;
   document.getElementById('profile-balance').textContent = fmt(u.balance);
   document.getElementById('profile-referrals').textContent = u.referralCount;
+
+  // Withdraw panel needs the live balance + minimum each time it's opened
+  currentBalance = u.balance;
+  currentMinWithdraw = u.minWithdraw;
 }
 
 document.getElementById('watch-ad-btn').addEventListener('click', async () => {
@@ -275,6 +300,90 @@ document.getElementById('unlocked-history-btn').addEventListener('click', async 
     : '<div class="empty-state">এখনো কোনো ভিডিও unlock করা হয়নি।</div>';
 });
 
+// ---------------- Profile: withdraw ----------------
+let currentBalance = 0;
+let currentMinWithdraw = 500;
+
+document.getElementById('withdraw-btn').addEventListener('click', () => {
+  document.getElementById('withdraw-balance').textContent = fmt(currentBalance);
+  document.getElementById('withdraw-min').textContent = currentMinWithdraw;
+  document.getElementById('withdraw-amount').value = '';
+  document.getElementById('withdraw-account').value = '';
+  document.getElementById('withdraw-status').textContent = '';
+  document.getElementById('panel-withdraw').classList.add('active');
+});
+
+document.getElementById('withdraw-submit-btn').addEventListener('click', async () => {
+  const btn = document.getElementById('withdraw-submit-btn');
+  const status = document.getElementById('withdraw-status');
+  const amount = parseFloat(document.getElementById('withdraw-amount').value);
+  const method = document.getElementById('withdraw-method').value;
+  const accountNumber = document.getElementById('withdraw-account').value.trim();
+
+  if (!amount || amount < currentMinWithdraw) {
+    status.textContent = `সর্বনিম্ন ${currentMinWithdraw} DHC withdraw করা যাবে।`;
+    return;
+  }
+  if (amount > currentBalance) {
+    status.textContent = 'আপনার balance যথেষ্ট নয়।';
+    return;
+  }
+  if (!accountNumber) {
+    status.textContent = 'Account number দিন।';
+    return;
+  }
+
+  btn.disabled = true;
+  status.textContent = 'পাঠানো হচ্ছে...';
+
+  const data = await api('/api/user?action=withdraw_request', {
+    method: 'POST',
+    body: { amount, method, accountNumber }
+  });
+
+  btn.disabled = false;
+
+  if (data.ok) {
+    status.textContent = 'Withdraw request পাঠানো হয়েছে! Admin approve করলে টাকা পাবেন।';
+    tg.HapticFeedback?.notificationOccurred('success');
+    loadProfile();
+  } else if (data.error === 'below_minimum') {
+    status.textContent = `সর্বনিম্ন ${data.minimum} DHC withdraw করা যাবে।`;
+  } else if (data.error === 'insufficient_balance') {
+    status.textContent = 'আপনার balance যথেষ্ট নয়।';
+  } else {
+    status.textContent = 'সমস্যা হয়েছে, আবার চেষ্টা করুন।';
+  }
+});
+
+const withdrawStatusLabel = { pending: '⏳ Pending', approved: '✅ Approved', rejected: '❌ Rejected' };
+
+document.getElementById('withdraw-history-btn').addEventListener('click', async () => {
+  const box = document.getElementById('withdraw-history-list');
+  box.innerHTML = '<div class="empty-state">লোড হচ্ছে...</div>';
+  document.getElementById('panel-withdraw-history').classList.add('active');
+
+  const data = await api('/api/user?action=withdraw_history');
+  if (!data.ok) return;
+
+  box.innerHTML = data.withdrawals.length
+    ? data.withdrawals.map(w => `
+        <div class="unlocked-history-item withdraw-history-item status-${w.status}">
+          <span>${fmt(w.amount)} DHC — ${w.method === 'bkash' ? 'Bkash' : 'Nagad'}</span>
+          <span class="status-badge status-${w.status}">${withdrawStatusLabel[w.status] || w.status}</span>
+        </div>
+      `).join('')
+    : '<div class="empty-state">এখনো কোনো withdraw request নেই।</div>';
+});
+
 // ---------------- Init ----------------
+// Deep link support: an admin-sent button can point to ?video=<id> which
+// opens that video's detail page directly instead of the home grid.
+const deepLinkVideoId = new URLSearchParams(window.location.search).get('video');
+
+loadCategoryTabs();
 loadVideos();
 loadProfile();
+if (deepLinkVideoId) {
+  openVideoDetail(deepLinkVideoId);
+}
