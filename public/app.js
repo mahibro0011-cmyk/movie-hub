@@ -113,8 +113,9 @@ async function openVideoDetail(id) {
   const insufficientMsg = document.getElementById('insufficient-msg');
   const unlockBtn = document.getElementById('unlock-btn');
 
-  if (data.alreadyUnlocked) {
-    unlockBtn.textContent = 'ইতিমধ্যে Unlocked ✓ — আবার পাঠাতে ট্যাপ করুন';
+  if (data.alreadyUnlocked && data.userBalance >= data.video.unlockCost) {
+    // Previously unlocked at least once - still a paid action every time now.
+    unlockBtn.textContent = `আবার Unlock করুন (${data.video.unlockCost} DHC)`;
     insufficientMsg.style.display = 'none';
   } else if (data.userBalance < data.video.unlockCost) {
     insufficientMsg.style.display = 'block';
