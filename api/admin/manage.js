@@ -181,6 +181,24 @@ module.exports = async (req, res) => {
       return res.status(200).json({ ok: true });
     }
 
+    // ---------------- USER: manually adjust a balance (increase/decrease) ----------------
+    if (entity === 'user' && req.method === 'POST') {
+      const { telegramId, delta } = req.body;
+      const amount = parseFloat(delta);
+      if (!telegramId || !amount || isNaN(amount)) {
+        return res.status(400).json({ ok: false, error: 'missing_fields' });
+      }
+
+      const updatedUser = await db.collection('users').findOneAndUpdate(
+        { telegramId: String(telegramId) },
+        { $inc: { balance: amount } },
+        { returnDocument: 'after' }
+      );
+      if (!updatedUser) return res.status(404).json({ ok: false, error: 'user_not_found' });
+
+      return res.status(200).json({ ok: true, telegramId: updatedUser.telegramId, newBalance: updatedUser.balance });
+    }
+
     // ---------------- LIST (for admin panel tables) ----------------
     if (entity === 'video' && req.method === 'GET') {
       const videos = await db.collection('videos').find({}).sort({ createdAt: -1 }).toArray();
