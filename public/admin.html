@@ -126,13 +126,19 @@
   <!-- Message -->
   <div class="admin-panel" id="panel-message">
     <div class="card">
-      <h3>Send message to a user</h3>
+      <h3>Send message</h3>
       <p style="font-size:12px; color:var(--muted); margin-bottom:12px;">
-        যেকোনো user-কে সরাসরি টেক্সট, বা ছবি + টেক্সট পাঠান। নিচে একটা বাটন থাকবে যার লেখা আপনি ঠিক করবেন, কিন্তু বাটনটা ক্লিক করলে সবসময় সরাসরি bot-এর web app খুলবে।
+        একজন নির্দিষ্ট user-কে, অথবা Target ID খালি রাখলে <b>সব user</b>-কে টেক্সট / ছবি পাঠান। Text অথবা image যেকোনো একটা দিলেই হবে। নিচে একটা বাটন থাকবে যার লেখা আপনি ঠিক করবেন; বাটনটা সবসময় সরাসরি bot-এর web app খুলবে — video select করলে সরাসরি সেই video-র page খুলবে, না করলে home page খুলবে।
       </p>
-      <div class="field"><label>Target Telegram ID</label><input id="msg-target" placeholder="e.g. 123456789"></div>
-      <div class="field"><label>Message text</label><input id="msg-text" placeholder="আপনার মেসেজ লিখুন..."></div>
+      <div class="field"><label>Target Telegram ID (খালি রাখলে সব user-কে যাবে)</label><input id="msg-target" placeholder="e.g. 123456789 (অথবা খালি রাখুন)"></div>
+      <div class="field"><label>Message text (optional)</label><input id="msg-text" placeholder="আপনার মেসেজ লিখুন... (খালি রাখা যাবে)"></div>
       <div class="field"><label>Image URL (optional)</label><input id="msg-image" placeholder="https://... (খালি রাখলে শুধু টেক্সট যাবে)"></div>
+      <div class="field">
+        <label>Button opens (optional)</label>
+        <select id="msg-video-select">
+          <option value="">— Home page (default) —</option>
+        </select>
+      </div>
       <div class="field"><label>Button text</label><input id="msg-btn-text" placeholder="e.g. 🔥 এখনই দেখুন"></div>
       <button class="btn-primary" id="msg-send-btn">Send</button>
       <p class="msg" id="msg-status"></p>
