@@ -33,6 +33,19 @@
   .msg { font-size: 12px; margin-top: 8px; min-height: 16px; }
   .msg.error { color: #DC2626; }
   .msg.ok { color: #16A34A; }
+  .status-pill { padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 800; text-transform: capitalize; }
+  .status-pill.pending { background: #FEF3C7; color: #B45309; }
+  .status-pill.approved { background: #DCFCE7; color: #15803D; }
+  .status-pill.rejected { background: #FEE2E2; color: #DC2626; }
+  .btn-sm.approve { background: #DCFCE7; color: #15803D; margin-right: 6px; }
+  .checkbox-group { display: flex; flex-wrap: wrap; gap: 10px 16px; padding: 4px 0; }
+  .checkbox-group label { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 500; }
+  .checkbox-group input[type="checkbox"] { width: auto; }
+  .field.inline-checkbox { display: flex; align-items: center; gap: 8px; }
+  .field.inline-checkbox label { margin: 0; }
+  .field.inline-checkbox input { width: auto; }
+  .btn-sm.plus { background: #DCFCE7; color: #15803D; }
+  .btn-sm.minus { background: #FEE2E2; color: #DC2626; }
 </style>
 </head>
 <body>
@@ -60,8 +73,10 @@
   <div class="admin-tabs">
     <button class="admin-tab-btn active" data-panel="overview">Overview</button>
     <button class="admin-tab-btn" data-panel="videos">Videos</button>
+    <button class="admin-tab-btn" data-panel="categories">Sections</button>
     <button class="admin-tab-btn" data-panel="tasks">Tasks</button>
     <button class="admin-tab-btn" data-panel="users">Users</button>
+    <button class="admin-tab-btn" data-panel="withdrawals">Withdrawals</button>
     <button class="admin-tab-btn" data-panel="message">Message</button>
   </div>
 
@@ -80,12 +95,37 @@
       <div class="field"><label>Code (from bot)</label><input id="video-code" placeholder="e.g. V7K2QX"></div>
       <div class="field"><label>Title</label><input id="video-title" placeholder="Video title"></div>
       <div class="field"><label>Thumbnail URL</label><input id="video-thumb" placeholder="https://..."></div>
+      <div class="field">
+        <label>Section(s) — এই video কোন কোন section-এ দেখাবে (একাধিক select করা যাবে)</label>
+        <div class="checkbox-group" id="video-category-checkboxes"></div>
+      </div>
+      <div class="field inline-checkbox">
+        <input type="checkbox" id="video-include-all" checked>
+        <label for="video-include-all">"All" ট্যাবেও দেখাও (uncheck করলে শুধু উপরের selected section(s)-এ দেখাবে)</label>
+      </div>
       <button class="btn-primary" id="video-publish-btn">Publish</button>
       <p class="msg" id="video-msg"></p>
     </div>
     <div class="card">
       <h3>Published videos</h3>
       <table id="videos-table"><thead><tr><th>Title</th><th>Unlocks</th><th></th></tr></thead><tbody></tbody></table>
+    </div>
+  </div>
+
+  <!-- Categories / Sections -->
+  <div class="admin-panel" id="panel-categories">
+    <div class="card">
+      <h3>Add new section</h3>
+      <p style="font-size:12px; color:var(--muted); margin-bottom:12px;">
+        যেমন "Bangla Movies", "Hindi Movies" — এই section-গুলোই Watch tab-এর উপরের tab হিসেবে দেখাবে, আর video publish করার সময় কোন section-এ রাখবেন তা এখান থেকেই বেছে নেওয়া যাবে।
+      </p>
+      <div class="field"><label>Section name</label><input id="category-name" placeholder="e.g. Bangla Movies"></div>
+      <button class="btn-primary" id="category-add-btn">Add Section</button>
+      <p class="msg" id="category-msg"></p>
+    </div>
+    <div class="card">
+      <h3>Existing sections</h3>
+      <table id="categories-table"><thead><tr><th>Name</th><th></th></tr></thead><tbody></tbody></table>
     </div>
   </div>
 
@@ -119,7 +159,26 @@
   <div class="admin-panel" id="panel-users">
     <div class="card">
       <div class="field"><label>Search (username / name / telegram id)</label><input id="user-search" placeholder="search..."></div>
-      <table id="users-table"><thead><tr><th>Name</th><th>Balance</th><th>Referrals</th><th>Ads watched</th></tr></thead><tbody></tbody></table>
+      <table id="users-table"><thead><tr><th>Name</th><th>Balance</th><th>Referrals</th><th>Ads watched</th><th>Adjust balance</th></tr></thead><tbody></tbody></table>
+    </div>
+  </div>
+
+  <!-- Withdrawals -->
+  <div class="admin-panel" id="panel-withdrawals">
+    <div class="card">
+      <div class="field">
+        <label>Filter</label>
+        <select id="withdrawal-filter">
+          <option value="">সব</option>
+          <option value="pending">Pending</option>
+          <option value="approved">Approved</option>
+          <option value="rejected">Rejected</option>
+        </select>
+      </div>
+      <table id="withdrawals-table">
+        <thead><tr><th>User</th><th>Amount</th><th>Method</th><th>Account</th><th>Status</th><th></th></tr></thead>
+        <tbody></tbody>
+      </table>
     </div>
   </div>
 
