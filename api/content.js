@@ -12,10 +12,24 @@ module.exports = async (req, res) => {
     if (!tgUser) return res.status(401).json({ ok: false, error: 'invalid_auth' });
     const telegramId = String(tgUser.id);
 
+    // ---------------- CATEGORIES (for Watch tab tabs) ----------------
+    if (type === 'categories' && req.method === 'GET') {
+      const categories = await db.collection('categories').find({}).sort({ createdAt: 1 }).toArray();
+      return res.status(200).json({
+        ok: true,
+        categories: categories.map(c => ({ id: c._id, name: c.name }))
+      });
+    }
+
     // ---------------- VIDEOS LIST (Watch tab) ----------------
     if (type === 'videos' && req.method === 'GET') {
+      const category = req.query.category; // undefined/"all" -> "All" tab; otherwise a category id
+      const query = (!category || category === 'all')
+        ? { includeInAll: { $ne: false } } // default true - only excluded if explicitly set false
+        : { categoryIds: category };
+
       const videos = await db.collection('videos')
-        .find({}, { projection: { title: 1, thumbnail: 1, unlockCount: 1 } })
+        .find(query, { projection: { title: 1, thumbnail: 1, unlockCount: 1 } })
         .sort({ createdAt: -1 }).toArray();
 
       return res.status(200).json({
