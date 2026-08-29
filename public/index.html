@@ -25,6 +25,10 @@
       <input type="text" placeholder="মুভির নাম দিয়ে সার্চ করুন..." disabled>
     </div>
 
+    <div id="category-tabs" class="category-tabs">
+      <button class="category-tab active" data-category="all">All</button>
+    </div>
+
     <div id="video-grid" class="video-grid">
       <div class="empty-state">লোড হচ্ছে...</div>
     </div>
@@ -154,6 +158,14 @@
     </div>
 
     <div class="profile-menu">
+      <button class="menu-row" id="withdraw-btn">
+        <span>💵 Withdraw</span>
+        <span class="menu-row-arrow">›</span>
+      </button>
+      <button class="menu-row" id="withdraw-history-btn">
+        <span>📜 Withdraw History</span>
+        <span class="menu-row-arrow">›</span>
+      </button>
       <button class="menu-row" id="unlocked-history-btn">
         <span>🎞 Total Video Unlocked</span>
         <b id="unlocked-count-inline">0</b>
@@ -161,6 +173,48 @@
     </div>
 
     <div id="unlocked-history-list" class="unlocked-history-list"></div>
+  </section>
+
+  <!-- ================= WITHDRAW (overlay) ================= -->
+  <section class="tab-panel overlay-panel" id="panel-withdraw">
+    <header class="topbar">
+      <button class="back-btn" data-back="profile">←</button>
+      <div class="brand-sm">Withdraw</div>
+    </header>
+    <div class="detail-card">
+      <p class="unlock-label">💵 Withdraw DHC Coin</p>
+      <p class="unlock-req">সর্বনিম্ন withdraw <b id="withdraw-min">500</b> DHC Coin। আপনার বর্তমান balance: <b id="withdraw-balance">0</b> DHC।</p>
+
+      <div class="field-group">
+        <label>Amount (DHC)</label>
+        <input type="number" id="withdraw-amount" placeholder="e.g. 500">
+      </div>
+      <div class="field-group">
+        <label>Method</label>
+        <select id="withdraw-method">
+          <option value="bkash">Bkash</option>
+          <option value="nagad">Nagad</option>
+        </select>
+      </div>
+      <div class="field-group">
+        <label>Account Number</label>
+        <input type="text" id="withdraw-account" placeholder="01XXXXXXXXX">
+      </div>
+
+      <button class="btn-primary" id="withdraw-submit-btn">Submit Request</button>
+      <p class="detail-status" id="withdraw-status"></p>
+    </div>
+  </section>
+
+  <!-- ================= WITHDRAW HISTORY (overlay) ================= -->
+  <section class="tab-panel overlay-panel" id="panel-withdraw-history">
+    <header class="topbar">
+      <button class="back-btn" data-back="profile">←</button>
+      <div class="brand-sm">Withdraw History</div>
+    </header>
+    <div id="withdraw-history-list" class="unlocked-history-list">
+      <div class="empty-state">লোড হচ্ছে...</div>
+    </div>
   </section>
 
   <!-- ================= BOTTOM NAV ================= -->
