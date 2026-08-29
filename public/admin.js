@@ -57,6 +57,7 @@ document.querySelectorAll('.admin-tab-btn').forEach(btn => {
     if (btn.dataset.panel === 'videos') loadVideosTable();
     if (btn.dataset.panel === 'tasks') loadTasksTable();
     if (btn.dataset.panel === 'users') loadUsersTable();
+    if (btn.dataset.panel === 'message') loadMessageVideoOptions();
   });
 });
 
@@ -179,18 +180,40 @@ async function deleteTask(id) {
   loadTasksTable();
 }
 
-// ---------------- Message (send custom text / image+text with a button to one user) ----------------
+// ---------------- Message (send to one user, or broadcast to all) ----------------
+async function loadMessageVideoOptions() {
+  const select = document.getElementById('msg-video-select');
+  const { data } = await adminApi('/api/admin/manage?entity=video');
+  const currentValue = select.value;
+  select.innerHTML = '<option value="">— Home page (default) —</option>';
+  if (data.ok) {
+    data.videos.forEach(v => {
+      const opt = document.createElement('option');
+      opt.value = v._id;
+      opt.textContent = v.title;
+      select.appendChild(opt);
+    });
+  }
+  select.value = currentValue; // keep selection if this is a refresh
+}
+
 document.getElementById('msg-send-btn').addEventListener('click', async () => {
   const targetId = document.getElementById('msg-target').value.trim();
   const text = document.getElementById('msg-text').value.trim();
   const imageUrl = document.getElementById('msg-image').value.trim();
+  const videoId = document.getElementById('msg-video-select').value;
   const buttonText = document.getElementById('msg-btn-text').value.trim();
   const msg = document.getElementById('msg-status');
 
-  if (!targetId || !text || !buttonText) {
-    msg.textContent = 'Target ID, message text আর button text — সব ঘর পূরণ করুন।';
+  if (!buttonText || (!text && !imageUrl)) {
+    msg.textContent = 'Button text আর অন্তত text অথবা image URL — এইগুলো লাগবে।';
     msg.className = 'msg error';
     return;
+  }
+
+  if (!targetId) {
+    const confirmed = confirm('Target ID খালি — এটা সব user-কে পাঠানো হবে। নিশ্চিত?');
+    if (!confirmed) return;
   }
 
   const btn = document.getElementById('msg-send-btn');
@@ -200,24 +223,40 @@ document.getElementById('msg-send-btn').addEventListener('click', async () => {
 
   const { data } = await adminApi('/api/admin/manage?entity=message', {
     method: 'POST',
-    body: { targetId, text, imageUrl: imageUrl || undefined, buttonText }
+    body: {
+      targetId: targetId || undefined,
+      text: text || undefined,
+      imageUrl: imageUrl || undefined,
+      videoId: videoId || undefined,
+      buttonText
+    }
   });
 
   btn.disabled = false;
 
-  if (data.ok) {
+  if (data.ok && data.broadcast) {
+    msg.textContent = `Broadcast পাঠানো হয়েছে — ${data.sent}/${data.totalUsers} জন পেয়েছেন${data.failed ? ` (${data.failed} জনের কাছে পৌঁছায়নি)` : ''}।`;
+    msg.className = 'msg ok';
+  } else if (data.ok) {
     msg.textContent = 'Message পাঠানো হয়েছে!';
     msg.className = 'msg ok';
-    document.getElementById('msg-target').value = '';
-    document.getElementById('msg-text').value = '';
-    document.getElementById('msg-image').value = '';
-    document.getElementById('msg-btn-text').value = '';
   } else if (data.error === 'user_not_found') {
     msg.textContent = 'এই Telegram ID-র কোনো user পাওয়া যায়নি (আগে bot-এ /start করতে হবে)।';
+    msg.className = 'msg error';
+  } else if (data.error === 'video_not_found' || data.error === 'invalid_video_id') {
+    msg.textContent = 'Selected video পাওয়া যায়নি।';
     msg.className = 'msg error';
   } else {
     msg.textContent = 'পাঠাতে ব্যর্থ হয়েছে — হয়তো user bot-কে ব্লক করে রেখেছে, অথবা image URL ভুল।';
     msg.className = 'msg error';
+  }
+
+  if (data.ok) {
+    document.getElementById('msg-target').value = '';
+    document.getElementById('msg-text').value = '';
+    document.getElementById('msg-image').value = '';
+    document.getElementById('msg-btn-text').value = '';
+    document.getElementById('msg-video-select').value = '';
   }
 });
 
