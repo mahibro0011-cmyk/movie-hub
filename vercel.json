@@ -5,6 +5,9 @@
       "maxDuration": 10
     }
   },
+  "crons": [
+    { "path": "/api/cron/daily-reset", "schedule": "0 18 * * *" }
+  ],
   "rewrites": [
     { "source": "/admin", "destination": "/admin.html" },
     { "source": "/", "destination": "/index.html" }
