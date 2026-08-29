@@ -372,9 +372,34 @@ async function loadUsersTable(search = '') {
   tbody.innerHTML = data.users.map(u => `
     <tr>
       <td>${u.firstName || '—'} ${u.username ? `(@${u.username})` : ''}</td>
-      <td>${Number(u.balance || 0).toFixed(2)} DHC</td>
+      <td id="balance-${u.telegramId}">${Number(u.balance || 0).toFixed(2)} DHC</td>
       <td>${u.referralCount || 0}</td>
       <td>${u.totalAdsWatched || 0}</td>
+      <td>
+        <button class="btn-sm plus" onclick="adjustBalance('${u.telegramId}', 1)">+ Add</button>
+        <button class="btn-sm minus" onclick="adjustBalance('${u.telegramId}', -1)">− Deduct</button>
+      </td>
     </tr>
   `).join('');
+}
+
+// Increase (sign=1) or decrease (sign=-1) a user's balance by an admin-entered amount.
+async function adjustBalance(telegramId, sign) {
+  const raw = prompt(sign > 0 ? 'কত DHC যোগ করবেন?' : 'কত DHC কমাবেন?');
+  if (raw === null) return;
+  const amount = parseFloat(raw);
+  if (!amount || amount <= 0) { alert('একটা সঠিক সংখ্যা দিন।'); return; }
+
+  const { data } = await adminApi('/api/admin/manage?entity=user', {
+    method: 'POST',
+    body: { telegramId, delta: sign * amount }
+  });
+
+  if (!data.ok) {
+    alert(data.error === 'user_not_found' ? 'User পাওয়া যায়নি।' : 'কিছু একটা সমস্যা হয়েছে।');
+    return;
+  }
+
+  const cell = document.getElementById(`balance-${telegramId}`);
+  if (cell) cell.textContent = `${Number(data.newBalance).toFixed(2)} DHC`;
 }
